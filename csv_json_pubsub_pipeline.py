@@ -85,8 +85,7 @@ def run(argv=None):
      # processing starts with lines read from the file.  We use the input
      # argument from the command line.  We also skip the first line which is a
      # header row.
-     | 'Read and Send' >> beam.ParDo(data_ingestion.parse_and_send())
-     
+     | 'Read and Send' >> beam.ParDo(data_ingestion.parse_send_method()))
     p.run().wait_until_finish()
 
 
