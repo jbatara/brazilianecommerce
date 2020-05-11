@@ -25,7 +25,8 @@ import argparse
 import logging
 import re
 import pandas as pd
-
+import csv
+import json
 from past.builtins import unicode
 
 import apache_beam as beam
@@ -97,6 +98,20 @@ def datatopubsub(dir_path):
         publisher.publish(topic_name, jsonobj.encode('utf-8'))
         output+="/n"+jsonobj
     return output
+def publishtopubsub(topic_name, project, jsonobj):
+    publisher = pubsub.PublisherClient()
+
+    topic_name = 'projects/{project_id}/topics/{topic}'.format(
+        project_id='tura-project-001',
+        topic='OrderJson')
+    publisher.publish(topic_name, jsonobj.encode('utf-8'))
+    return (jsonobj.encode('utf-8') + "/n")
+
+def getheader(csv_path):
+    with open(csv_path, "rb") as f:
+        reader=csv.reader(f)
+        i=next(reader)
+        return i;
 
 def run(argv=None, save_main_session=True):
   bucket="tura-project-001"
@@ -105,14 +120,14 @@ def run(argv=None, save_main_session=True):
   parser.add_argument(
       '--input',
       dest='input',
-      default=f'gs://{bucket}/data/raw/lorem_ipsum.txt',
+      default=f'gs://{bucket}/data/raw/olist_orders_dataset.txt',
       help='Input file to process.')
   parser.add_argument(
       '--output',
       dest='output',
       required=True,
       help='Output file to write results to.',
-      default=f"gs://{bucket}/tmp")
+      default=f"gs://{bucket}/output")
   known_args, pipeline_args = parser.parse_known_args(argv)
 
   # We use the save_main_session option because one or more DoFn's in this
@@ -122,8 +137,14 @@ def run(argv=None, save_main_session=True):
   p = beam.Pipeline(options=pipeline_options)
 
   (p 
-      | 'personal function' >> datatopubsub('gs://tura-project-001/data/raw/')
-      | 'write' >> WriteToText(known_args.output))
+      | 'read csv to strings' >> ReadFromText(known_args.input, skip_header_lines=1)
+      | 'split csv string' >> beam.Map(lambda x: x.split(","))
+      | 'zip into dictionary' >> beam.Map(lambda x: dict(zip(["order_id", "order_item_id", "product_id", "seller_id", "shipping_limit_date","price","freight_value"], x)))
+      | 'convert to json string' >> beam.Map(lambda x: json.dumps(x))
+      # | 'write to file' >> beam.io.textio.WriteToText(known_args.output)
+      | 'send to pub/sub' >> beam.Map(lambda x: publishtopubsub('OrderJson', 'tura-project-001', x))
+  )
+
 
   result = p.run()
   result.wait_until_finish()

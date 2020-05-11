@@ -9,6 +9,7 @@ import argparse
 import csv
 import logging
 import os
+import pandas as pd
 
 
 import apache_beam as beam
@@ -21,11 +22,12 @@ class DataTransformation:
   format to be sent to pubsub."""
 
     def __init__(self):
-        dir_path = os.path.dirname(os.path.realpath(__file__))
+        self.dir_path = 'gs://tura-project-001/data/raw'
 
     def parse_send_method(self):
         """This method reads a csv and loads it into dataframes to be processed into a comprehensive JSON
         """
+        orders_df = pd.read_csv(self.dir_path+'olist_orders_dataset.csv')
         orderItems_df = pd.read_csv(self.dir_path+'olist_order_items_dataset.csv')
         sellers_df = pd.read_csv(self.dir_path+'olist_sellers_dataset.csv')
         customers_df = pd.read_csv(self.dir_path+'olist_customers_dataset.csv')
@@ -35,8 +37,8 @@ class DataTransformation:
         publisher = pubsub.PublisherClient()
 
         topic_name = 'projects/{project_id}/topics/{topic}'.format(
-            project_id='internship-sandbox',
-            topic='OrderJson',
+            project_id='tura-project-001',
+            topic='OrderJSON',
         )
         # myfile = open('myjson.json', 'w')
         for orderID in uniqueOrderKeys:
@@ -62,12 +64,23 @@ def run(argv=None):
              'a file in a Google Storage Bucket.',
         # This example file contains a total of only 10 lines.
         # It is useful for developing on a small set of data
-        default='gs://internship-sandbox/data/raw/olist_orders_dataset.csv')
+        default='gs://tura-project-001/data/raw/olist_orders_dataset.csv')
+    # parser.add_argument(
+    #     '--topic_name', dest='topic_name', required=False,
+    #     help='Input file to read.  This can be a local file or '
+    #          'a file in a Google Storage Bucket.',
+    #     # This example file contains a total of only 10 lines.
+    #     # It is useful for developing on a small set of data
+    #     default='OrderJSON')
+    # parser.add_argument(
+    #     '--project_name', dest='project_name', required=False,
+    #     help='Input file to read.  This can be a local file or '
+    #          'a file in a Google Storage Bucket.',
+    #     # This example file contains a total of only 10 lines.
+    #     # It is useful for developing on a small set of data
+    #     default='tura-project-001')
     # This defaults to the temp dataset in your BigQuery project.  You'll have
     # to create the temp dataset yourself using bq mk temp
-    parser.add_argument('--topic', dest='topic', required=False,
-                        help='Topic to write JSONs to',
-                        default='lake.usa_names_transformed')
 
     # Parse arguments from the command line.
     known_args, pipeline_args = parser.parse_known_args(argv)

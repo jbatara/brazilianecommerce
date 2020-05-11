@@ -1,0 +1,6 @@
+ python  csv_read_file.py \
+  --input gs://$BUCKET/data/raw/olist_orders_dataset.csv \
+  --output gs://$BUCKET/data/json/ \
+  --runner DataflowRunner \
+  --project $PROJECT \
+  --temp_location gs://$BUCKET/tmp/
